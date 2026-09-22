@@ -10,8 +10,8 @@ namespace telemetry {
 
 template <typename T, size_t Capacity>
 class alignas(64) CircularBuffer {
-    static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of two for fast indexing");
-    static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable for lock-free operations");
+    static_assert((Capacity & (Capacity - 1)) == 0, "Capacity must be a power of two");
+    static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
 
 public:
     CircularBuffer() : head_(0), tail_(0) {}
@@ -20,8 +20,9 @@ public:
         size_t current_tail = tail_.load(std::memory_order_relaxed);
         size_t current_head = head_.load(std::memory_order_acquire);
 
-        if ((current_tail - current_head) >= Capacity) {
-            return false; // Buffer full
+        // Safe wrap-around comparison using unsigned arithmetic
+        if (static_cast<size_t>(current_tail - current_head) >= Capacity) {
+            return false;
         }
 
         buffer_[current_tail & (Capacity - 1)] = item;
@@ -34,7 +35,7 @@ public:
         size_t current_tail = tail_.load(std::memory_order_acquire);
 
         if (current_head == current_tail) {
-            return std::nullopt; // Buffer empty
+            return std::nullopt;
         }
 
         T item = buffer_[current_head & (Capacity - 1)];
@@ -45,7 +46,7 @@ public:
     [[nodiscard]] size_t size() const noexcept {
         size_t head = head_.load(std::memory_order_relaxed);
         size_t tail = tail_.load(std::memory_order_relaxed);
-        return (tail >= head) ? (tail - head) : 0;
+        return static_cast<size_t>(tail - head);
     }
 
     [[nodiscard]] bool empty() const noexcept {
