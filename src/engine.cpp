@@ -1,3 +1,4 @@
-// Ingestion engine thread coordinator
+// Ingestion engine thread coordinator with graceful stop
 #include "telemetry/circular_buffer.hpp"
-namespace telemetry { class Engine { CircularBuffer<MetricRecord, 1024> ring_; }; }
+#include <atomic>
+namespace telemetry { class Engine { std::atomic<bool> running_{true}; }; }
